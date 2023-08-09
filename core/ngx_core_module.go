@@ -1,4 +1,4 @@
-package ngx_core_module
+package core
 
 // NgxCoreModule 基础模块
 type NgxCoreModule struct{}
