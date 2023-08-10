@@ -22,7 +22,8 @@ func main() {
 
 func ngxInitCycle() {
 
-	//ngxCycle = core.GetGlobalCycle()
+	ngxCycle := core.GetGlobalCycle()
+	ngxCycle.Modules = append(ngxCycle.Modules, core.GetNgxCoreModule())
 
 	// 执行所有模块的 create_conf
 
@@ -30,6 +31,8 @@ func ngxInitCycle() {
 
 	// 解析配置文件
 	ngxConf := core.CreateNgxConf()
+	ngxConf.SetModuleType(core.ENgxCoreModule)
+	ngxConf.SetCmdType(core.ENgxMainConf)
 	ngxConf.ParseFile("./conf.d/nginx.conf")
 
 	// 执行所有模块的 init_conf

@@ -220,7 +220,7 @@ func (conf *NgxConf) read_token() int {
 			// 1.1 文件中是否还有字符未读取
 			// TODO: 不能使用 Seek 获取当前文件的 offset
 			// 如果是 parameter 解析，confFile 是 nil
-			fmt.Printf("offset:%d \n", conf.confFileOffset)
+			//fmt.Printf("offset:%d \n", conf.confFileOffset)
 			if conf.confFileOffset >= int64(conf.confFileInfo.Size()) {
 
 				// 读取到了token，或者读取了 半个 token
@@ -228,7 +228,6 @@ func (conf *NgxConf) read_token() int {
 				// 说明配置有问题
 				if len(conf.Args) > 0 || !last_space {
 
-					fmt.Printf("offset:%ld param left\n", conf.confFileOffset)
 					// 说明是在解析命令行参数时有问题
 					if conf.confFile != nil {
 						fmt.Println("error:unexpected end of parameter,expectind \";\"")
@@ -495,11 +494,9 @@ func (conf *NgxConf) read_token() int {
 					copy_idx++
 				} // for 循环拷贝结束
 				conf.Args = append(conf.Args, string(arg[0:idx]))
-				//fmt.Printf("push arg:%s args:%v\n", string(arg[0:idx]), conf.Args)
 
 				// 一个完整的 key value; 配置读取完，返回到上层，交由对应模块来处理 key value
 				if ch == ';' {
-					fmt.Printf("read_token ok\n")
 					return NgxOk
 				}
 
@@ -508,6 +505,7 @@ func (conf *NgxConf) read_token() int {
 				if ch == '{' {
 					return NgxConfBlockStart
 				}
+				found = false
 
 			} // if found == 1 end
 			// 当前字符处理结束，继续下一轮循环的处理
@@ -521,17 +519,17 @@ func (conf *NgxConf) conf_handler() int {
 	ngxCycle := GetGlobalCycle()
 
 	commandName := conf.Args[0]
-	fmt.Printf("conf_handler,args:%v\n", conf.Args)
 
 	for _, module := range ngxCycle.Modules {
 		// 找到配置对应的模块，调用模块的配置处理回调函数
-		if module.Commands == nil {
+		commands := module.GetCommands()
+		if len(commands) == 0 {
 			continue
 		}
 
-		for _, command := range module.Commands() {
+		for _, command := range commands {
 
-			if module.Type() != NgxConfModule && module.Type() != conf.moduleType {
+			if module.Type() != ENgxConfModule && module.Type() != conf.moduleType {
 				continue
 			}
 
@@ -550,13 +548,12 @@ func (conf *NgxConf) conf_handler() int {
 			// TODO: 这里的实现比较复杂，这里要找到 moudle 对应的 module_conf
 			//  module 里面的 Set 是将配置项存储到对应的 module_conf 里面
 			// 如果使用 interface 这里涉及到 go package 的循环引用: 遇到把 NgxConf 传递到 module 定义的包内
-			// command.Set(conf, command, module_conf)
+			command.Set(conf, &command, nil)
 
 		}
 	}
 	// 清空 Args
 	conf.Args = []string{}
-	fmt.Printf("conf_handler done,args:%v\n", conf.Args)
 	return NgxOk
 }
 
@@ -565,4 +562,11 @@ func (conf *NgxConf) is_end_char(ch byte) bool {
 		return true
 	}
 	return false
+}
+
+func (conf *NgxConf) SetModuleType(val int) {
+	conf.moduleType = val
+}
+func (conf *NgxConf) SetCmdType(val int) {
+	conf.cmdType = val
 }

@@ -1,7 +1,8 @@
 package core
 
 const (
-	NgxConfModule int = 0
+	ENgxConfModule int = 0
+	ENgxCoreModule     = 1
 )
 
 // NgxModule 模块定义
@@ -11,7 +12,7 @@ type NgxModule interface {
 	InitProcess()
 
 	// get and set 接口
-	Commands() []NgxModuleCommand
+	GetCommands() []NgxModuleCommand
 	Type() int
 	Name() string
 	Index() int
@@ -24,7 +25,7 @@ type NgxModuleConf interface {
 type NgxModuleCommand interface {
 	Type() int
 	Name() string
-	SetModuleConf(*NgxConf, *NgxModuleCommand, *NgxModuleConf)
+	Set(*NgxConf, *NgxModuleCommand, *NgxModuleConf)
 }
 
 // NgxModuleCtx 模块 ctx
