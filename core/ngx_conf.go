@@ -6,11 +6,57 @@ import (
 )
 
 const (
-	NgxConfOk         int = 0
-	NgxConfError          = -1
-	NgxConfBlockStart     = 1
-	NgxConfBlockDone      = 2
-	NgxConfFileDone       = 3
+	NgxConfOk int = 0
+
+	NgxConfError = -1
+
+	NgxConfBlockStart = 1
+	NgxConfBlockDone  = 2
+	NgxConfFileDone   = 3
+)
+
+// 配置项的类型枚举
+const (
+	TNgxConfNoArgs   int64 = 0x00000001
+	TNgxConfTake1          = 0x00000002
+	TNgxConfTake2          = 0x00000004
+	TNgxConfTake3          = 0x00000008
+	TNgxConfTake4          = 0x00000010
+	TNgxConfTake5          = 0x00000020
+	TNgxConfTake6          = 0x00000040
+	TNgxConfTake7          = 0x00000080
+	TNgxConfTake12         = (TNgxConfTake1 | TNgxConfTake2)
+	TNgxConfTake13         = (TNgxConfTake1 | TNgxConfTake3)
+	TNgxConfTake23         = (TNgxConfTake2 | TNgxConfTake3)
+	TNgxConfTake123        = (TNgxConfTake1 | TNgxConfTake2 | TNgxConfTake3)
+	TNgxConfTake1234       = (TNgxConfTake1 | TNgxConfTake2 | TNgxConfTake3 | TNgxConfTake4)
+
+	TNgxConfArgsNumber = 0x000000ff
+	TNgxConfBlock      = 0x00000100
+	TNgxConfFlag       = 0x00000200
+	TNgxConfAny        = 0x00000400
+	TNgxConf1More      = 0x00000800
+	TNgxConf2More      = 0x00001000
+	TNgxDirectConf     = 0x00010000
+
+	TNgxMainConf = 0x01000000
+	TNgxAnyConf  = 0xFF000000
+
+	// event 配置
+	// event 下面的配置项
+	TNgxEventConf = 0x02000000
+
+	// http 配置
+	// http 下面的配置
+	TNgxHttpMainConf = 0x02000000
+	// http.server 下面的配置
+	TNgxHttpSRVConf = 0x04000000
+	// http.server.location 下面的配置
+	TNgxHttpLocConf = 0x08000000
+	TNgxHttpUpsConf = 0x10000000
+	TNgxHttpSifConf = 0x20000000
+	TNgxHttpLifConf = 0x40000000
+	TNgxHttpLMTConf = 0x80000000
 )
 
 // NgxConf  nginx 配置
@@ -20,8 +66,8 @@ type NgxConf struct {
 	confFileOffset int64
 	confFileInfo   os.FileInfo
 	confBuf        *NgxConfBuf
-	moduleType     int
-	cmdType        int
+	ModuleType     int
+	CmdType        int64
 	Args           []string
 }
 
@@ -67,15 +113,15 @@ func (conf *NgxConf) ParseParameter() {
 // ParseFile 解析配置
 func (conf *NgxConf) ParseFile(fileName string) int {
 
+	var parse_type int
 	defer func() {
-		if conf.confFile != nil {
+		if conf.confFile != nil && parse_type == eParseFile {
 			fmt.Println("Close file")
 			conf.confFile.Close()
 		}
 	}()
 
 	var err error
-	var parse_type int
 
 	if len(fileName) != 0 {
 		parse_type = eParseFile
@@ -107,6 +153,7 @@ func (conf *NgxConf) ParseFile(fileName string) int {
 		// 从头开始解析配置文件
 
 	} else if conf.confFile != nil {
+		fmt.Printf("begin parse conf block\n")
 		// 配置文件解析过程，进入模块的配置解析，读取模块的子配置
 		parse_type = eParseBlock
 		conf.confBuf.ParseType = eParseBlock
@@ -518,9 +565,15 @@ func (conf *NgxConf) conf_handler() int {
 
 	ngxCycle := GetGlobalCycle()
 
+	found := false
 	commandName := conf.Args[0]
 
 	for _, module := range ngxCycle.Modules {
+
+		if module.Type() != ENgxConfModule && module.Type() != conf.ModuleType {
+			continue
+		}
+
 		// 找到配置对应的模块，调用模块的配置处理回调函数
 		commands := module.GetCommands()
 		if len(commands) == 0 {
@@ -529,15 +582,11 @@ func (conf *NgxConf) conf_handler() int {
 
 		for _, command := range commands {
 
-			if module.Type() != ENgxConfModule && module.Type() != conf.moduleType {
+			if (command.CmdType & conf.CmdType) == 0 {
 				continue
 			}
 
-			if command.Type() != conf.cmdType {
-				continue
-			}
-
-			if command.Name() != commandName {
+			if command.Name != commandName {
 				continue
 			}
 
@@ -548,9 +597,13 @@ func (conf *NgxConf) conf_handler() int {
 			// TODO: 这里的实现比较复杂，这里要找到 moudle 对应的 module_conf
 			//  module 里面的 Set 是将配置项存储到对应的 module_conf 里面
 			// 如果使用 interface 这里涉及到 go package 的循环引用: 遇到把 NgxConf 传递到 module 定义的包内
-			command.Set(conf, &command, nil)
-
+			command.Set(conf, command)
+			found = true
 		}
+	}
+
+	if !found {
+		fmt.Printf("error: cannot find conf item:%s command\n", commandName)
 	}
 	// 清空 Args
 	conf.Args = []string{}
@@ -562,11 +615,4 @@ func (conf *NgxConf) is_end_char(ch byte) bool {
 		return true
 	}
 	return false
-}
-
-func (conf *NgxConf) SetModuleType(val int) {
-	conf.moduleType = val
-}
-func (conf *NgxConf) SetCmdType(val int) {
-	conf.cmdType = val
 }

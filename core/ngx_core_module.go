@@ -1,62 +1,60 @@
 package core
 
-import "fmt"
-
-const (
-	ENgxMainConf int = 0
+import (
+	"fmt"
+	"strconv"
 )
 
 // NgxCoreModule 基础模块
 type NgxCoreModule struct {
 	moduleType int
 	moduleName string
-	commands   []NgxModuleCommand
+	commands   []*NgxModuleCommand
+	moduleConf ngxCoreModuleConf
 }
 
-// 模块配置设置 command
-type workProcessOpt struct {
+type ngxCoreModuleConf struct {
+	MasterProcess bool
+	WorkProcess   int
+	Daemon        bool
 }
 
-type masterPorcessOpt struct{}
+func WithWorkProcess(conf *ngxCoreModuleConf) CmdHandler {
 
-type daemonOpt struct{}
+	return func(ngxConf *NgxConf, ngxModule *NgxModuleCommand) {
 
-func (opt *daemonOpt) Type() int {
-	return ENgxMainConf
+		fmt.Printf("ngx_core_module Set daemonOpt ,args:%v\n", ngxConf.Args)
+		num, err := strconv.Atoi(ngxConf.Args[1])
+		if err != nil {
+			panic("opt to int failed:" + ngxConf.Args[1])
+		}
+		conf.WorkProcess = num
+	}
 }
 
-func (opt *daemonOpt) Name() string {
-	return "daemon"
-}
-func (opt *masterPorcessOpt) Type() int {
-	return ENgxMainConf
-}
-
-func (opt *masterPorcessOpt) Name() string {
-	return "master_process"
-}
-
-func (opt *workProcessOpt) Type() int {
-	return ENgxMainConf
+func WithMasterProcess(conf *ngxCoreModuleConf) CmdHandler {
+	return func(ngxConf *NgxConf, ngxModule *NgxModuleCommand) {
+		fmt.Printf("ngx_core_module Set masterPorcessOpt ,args:%v\n", ngxConf.Args)
+		if ngxConf.Args[1] == "off" {
+			conf.MasterProcess = false
+		}
+		if ngxConf.Args[1] == "on" {
+			conf.MasterProcess = true
+		}
+	}
 }
 
-func (opt *workProcessOpt) Name() string {
-	return "worker_processes"
-}
-
-func (opt *daemonOpt) Set(conf *NgxConf, command *NgxModuleCommand, moudleConf *NgxModuleConf) {
-	// TODO
-	fmt.Printf("ngx_core_module Set daemonOpt ,args:%v\n", conf.Args)
-}
-
-func (opt *masterPorcessOpt) Set(conf *NgxConf, command *NgxModuleCommand, moudleConf *NgxModuleConf) {
-	// TODO
-	fmt.Printf("ngx_core_module Set masterPorcessOpt ,args:%v\n", conf.Args)
-}
-
-func (opt *workProcessOpt) Set(conf *NgxConf, command *NgxModuleCommand, moudleConf *NgxModuleConf) {
-	// TODO
-	fmt.Printf("ngx_core_module Set WorkProcess ,args:%v\n", conf.Args)
+func WithDaemon(conf *ngxCoreModuleConf) CmdHandler {
+	return func(ngxConf *NgxConf, ngxModule *NgxModuleCommand) {
+		// TODO
+		fmt.Printf("ngx_core_module Set WorkProcess ,args:%v\n", ngxConf.Args)
+		if ngxConf.Args[1] == "off" {
+			conf.Daemon = false
+		}
+		if ngxConf.Args[1] == "on" {
+			conf.Daemon = true
+		}
+	}
 }
 
 var coreModule NgxCoreModule
@@ -66,12 +64,12 @@ func init() {
 	coreModule = NgxCoreModule{
 		moduleType: ENgxCoreModule,
 		moduleName: "ngx_core_module",
-		commands: []NgxModuleCommand{
-			&workProcessOpt{},
-			&masterPorcessOpt{},
-			&daemonOpt{},
-		},
+		moduleConf: ngxCoreModuleConf{true, 0, true},
 	}
+	coreModule.commands = []*NgxModuleCommand{
+		NewNgxModuleCommand("worker_processes", TNgxMainConf|TNgxConfFlag, WithWorkProcess(&coreModule.moduleConf)),
+		NewNgxModuleCommand("master_process", TNgxMainConf|TNgxConfTake1, WithMasterProcess(&coreModule.moduleConf)),
+		NewNgxModuleCommand("daemon", TNgxMainConf|TNgxDirectConf|TNgxConfTake1, WithDaemon(&coreModule.moduleConf))}
 }
 
 func (module *NgxCoreModule) InitMaster()  {}
@@ -82,7 +80,7 @@ func (module *NgxCoreModule) Index() int {
 	return 0
 }
 
-func (module *NgxCoreModule) GetCommands() []NgxModuleCommand { return module.commands }
+func (module *NgxCoreModule) GetCommands() []*NgxModuleCommand { return module.commands }
 func (module *NgxCoreModule) Name() string {
 	return module.moduleName
 }
