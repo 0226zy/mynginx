@@ -72,6 +72,10 @@ func init() {
 		NewNgxModuleCommand("daemon", TNgxMainConf|TNgxDirectConf|TNgxConfTake1, WithDaemon(&coreModule.moduleConf))}
 }
 
+func (module *NgxCoreModule) GetCtx() interface{} {
+	return nil
+}
+
 func (module *NgxCoreModule) InitMaster()  {}
 func (module *NgxCoreModule) InitModule()  {}
 func (module *NgxCoreModule) InitProcess() {}

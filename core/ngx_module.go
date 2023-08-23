@@ -18,6 +18,7 @@ type NgxModule interface {
 	Type() int
 	Name() string
 	Index() int
+	GetCtx() interface{}
 }
 
 type NgxModuleConf interface {

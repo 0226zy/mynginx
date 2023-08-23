@@ -27,6 +27,9 @@ type NgxEventCoreModule struct {
 	commands   []*NgxModuleCommand
 }
 
+func (module *NgxEventCoreModule) GetCtx() interface{} {
+	return nil
+}
 func (module *NgxEventCoreModule) InitMaster()  {}
 func (module *NgxEventCoreModule) InitModule()  {}
 func (module *NgxEventCoreModule) InitProcess() {}

@@ -37,7 +37,10 @@ type NgxHttpRewriteModule struct {
 
 type ngxHttpRewriteModuleConf struct{}
 
-func (module *NgxHttpRewriteModule) InitMaster()  {}
+func (module *NgxHttpRewriteModule) InitMaster() {}
+func (module *NgxHttpRewriteModule) GetCtx() interface{} {
+	return nil
+}
 func (module *NgxHttpRewriteModule) InitModule()  {}
 func (module *NgxHttpRewriteModule) InitProcess() {}
 

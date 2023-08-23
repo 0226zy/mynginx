@@ -1,6 +1,9 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 var httpCoreModule NgxHttpCoreModule
 
@@ -9,11 +12,19 @@ func init() {
 	httpCoreModule = NgxHttpCoreModule{
 		moduleType: ENgxHttpModule,
 		moduleName: "ngx_http_core_module",
+		ctx:        &ngxHttpCoreModuleConfCtx{},
 		commands: []*NgxModuleCommand{
+
+			NewNgxModuleCommand(
+				"listen",
+				TNgxHttpMainConf|TNgxConfBlock|TNgxHttpSRVConf,
+				WithListen()),
+
 			NewNgxModuleCommand(
 				"server",
 				TNgxHttpMainConf|TNgxConfBlock|TNgxConfNoArgs,
 				WithServerBlock(&httpModuleConf)),
+
 			NewNgxModuleCommand(
 				"location",
 				TNgxHttpSRVConf|TNgxHttpLocConf|TNgxConfBlock|TNgxConfTake12,
@@ -30,7 +41,47 @@ func init() {
 type NgxHttpCoreModule struct {
 	moduleName string
 	moduleType int
+	ctx        INgxHttpConfCtx
 	commands   []*NgxModuleCommand
+}
+
+type ngxHttpCoreModuleConfCtx struct {
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) PreConfiguration(cf *NgxConf) int {
+	return 0
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) PostConfiguration(cf *NgxConf) int {
+	return 0
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) CreateMainConf(cf *NgxConf) interface{} {
+	return &ngxHttpCoreMainConf{serverConfs: []*ngxHttpCoreSrvConf{}, ports: []*ngxHttpConfPort{}}
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) InitMainConf(cf *NgxConf) interface{} {
+	return nil
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) CreateSrvConf(cf *NgxConf) interface{} {
+	return &ngxHttpCoreSrvConf{}
+
+}
+func (ctx *ngxHttpCoreModuleConfCtx) MergeSrvConf(cf *NgxConf) interface{} {
+	return nil
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) CreateLocConf(cf *NgxConf) interface{} {
+	return &ngxHttpCoreLocConf{}
+}
+
+func (ctx *ngxHttpCoreModuleConfCtx) MergeLocConf(cf *NgxConf) interface{} {
+	return nil
+}
+
+func (module *NgxHttpCoreModule) GetCtx() interface{} {
+	return module.ctx
 }
 
 func (module *NgxHttpCoreModule) InitMaster()  {}
@@ -79,9 +130,30 @@ func WithServerName(conf *ngxHttpModuleConf) CmdHandler {
 }
 
 // WithListen: listen
-func WithListen(conf *ngxHttpModuleConf) CmdHandler {
+func WithListen() CmdHandler {
 	return func(ngxConf *NgxConf, ngxModule *NgxModuleCommand) {
+
+		value := ngxConf.Args[1]
+		// TODO: parse url,从 url 中获取 port
+		port, err := strconv.Atoi(value)
+		if err != nil {
+			panic("Error:" + err.Error())
+		}
+		// TODO: parse opt,url 支持opt
+		// TODO: 支持指定 port 范围
+		// Add listen
+		httpMainConf := httpConfCtx.mainConfs[0]
+		srvConf := httpConfCtx.srvConfs[0]
+
 		fmt.Printf("handle conf:http.server.listen args:%v\n", ngxConf.Args)
+		portConf := &ngxHttpConfPort{addrs: []*ngxHttpConfAddr{}}
+		portConf.family = 1
+		portConf.portType = 1
+		portConf.port = port
+		addr := &ngxHttpConfAddr{servers: []*ngxHttpCoreSrvConf{}}
+		addr.servers = append(addr.servers, srvConf)
+		portConf.addrs = append(portConf.addrs, addr)
+		httpMainConf.ports = append(httpMainConf.ports, portConf)
 	}
 }
 

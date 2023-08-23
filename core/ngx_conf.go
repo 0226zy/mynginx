@@ -69,6 +69,7 @@ type NgxConf struct {
 	ModuleType     int
 	CmdType        int64
 	Args           []string
+	WorkerProcess  int
 }
 
 const (
@@ -103,6 +104,7 @@ func CreateNgxConf() *NgxConf {
 		confFile:       nil,
 		confBuf:        &NgxConfBuf{},
 		confFileOffset: 0,
+		WorkerProcess:  1,
 	}
 }
 

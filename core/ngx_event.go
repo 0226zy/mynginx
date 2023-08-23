@@ -55,9 +55,10 @@ func WithEventsBlock(conf *ngxEventsModuleConf) CmdHandler {
 	}
 }
 
-func (module *NgxEventsModule) InitMaster()  {}
-func (module *NgxEventsModule) InitModule()  {}
-func (module *NgxEventsModule) InitProcess() {}
+func (module *NgxEventsModule) GetCtx() interface{} { return nil }
+func (module *NgxEventsModule) InitMaster()         {}
+func (module *NgxEventsModule) InitModule()         {}
+func (module *NgxEventsModule) InitProcess()        {}
 
 func (module *NgxEventsModule) Index() int {
 	return 0

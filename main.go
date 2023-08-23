@@ -1,11 +1,19 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/0226zy/mynginx/core"
 	httpModules "github.com/0226zy/mynginx/http/modules"
 )
 
 func main() {
+
+	pid := os.Getpid()
+	processCycle := core.NewProcessCycle()
+	processCycle.ParseArgs()
+
 	// 初始化日志
 
 	// 内存池初始化
@@ -14,13 +22,14 @@ func main() {
 
 	// init cycle
 	core.CreateGlobalCycle()
-	ngxInitCycle()
+	ngxInitCycle(processCycle)
+	fmt.Printf("pid:%d end init cycle\n", pid)
 
-	// 启动子进程
-
+	// 进程模型处理
+	processCycle.ProcessCycle()
 }
 
-func ngxInitCycle() {
+func ngxInitCycle(processCycle *core.ProcessCycle) {
 
 	ngxCycle := core.GetGlobalCycle()
 	ngxCycle.Modules = append(ngxCycle.Modules, core.GetNgxCoreModule())
@@ -41,5 +50,11 @@ func ngxInitCycle() {
 	ngxConf.ParseFile("./conf.d/nginx.conf")
 
 	// 执行所有模块的 init_conf
+
+	// listen
+	if processCycle.IsMasterProcess() {
+		ngxCycle.OpenListeningSockekts()
+	}
+	ngxCycle.Conf = ngxConf
 
 }
